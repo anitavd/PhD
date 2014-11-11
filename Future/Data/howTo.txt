@@ -1,0 +1,61 @@
+Create annual maxima file for selected sites:
+
+###############for file in *historic*; do echo Now processing $file; cdo remapnn,locations.txt $file loc-$file;  done
+#Do the same for the remaining years, 2006-2013, rcp85.
+
+cdo cat loc-pr* loc-EUR11pr3h_MPI_SMHI_rcp85_19702013.nc
+
+cdo -yearmax loc-EUR11pr3h_MPI_SMHI_rcp85_19702013.nc AM/AM-loc-EUR11pr3h_MPI_SMHI_rcp85_1970-2013.nc
+###############3
+
+the entire grid, only summer months:
+cdo yearmax -selmon,5,6,7,8,9 ifile AM-year
+cdo cat AM-year* AM-1971-2014
+
+
+Create AM file for entire Norway
+
+KNMI
+
+cdo cat pr* pr-EUR11pr3h_ICHEC_SMHI_historical_19702005.nc
+
+cdo -yearmax Norway-EUR11pr3h_ICHEC_SMHI_historical_19702005.nc AM/AM-Norway-EUR11pr3h_ICHEC_SMHI_historical_19702005.nc 
+
+
+Create subregion a'la KNMI
+
+ncks -h -F -d rlon,188,330,1 -d rlat,270,412,1 -v pr,lon,lat,rotated_pole,time_bnds infile.nc outfile.nc
+
+
+IPSL raw grid --> CORDEX grid --> Norway grid
+
+for n in {1971..2005}; do echo Now processing pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc; ncks -F -d x,14,437 -d y,17,428 pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc temp_$n.nc;  done
+
+for n in {1971..2005}; do echo Now processing pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc; cdo setgrid,CORDEXGRID11 temp_$n.nc remap-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc;  done
+
+for n in {1971..2005}; do echo Now processing remap-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc; ncks -h -F -d x,188,330,1 -d y,270,412,1 -v pr,lon,lat remap-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc;  done
+
+Sum over time steps
+
+cdo timselsum,nsets[,noffset[,nskip]] ifile ofile (timselsum,3 / timselsum,24 /timselsum,8)
+gange med 60*60 / 60*60*3 for å få mm
+
+Beregne wet day frequency
+day > 1mm:
+cdo -L -O yearsum -gec,1 -mulc,10800 -selmon,5,6,7,8,9 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc WF-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc 
+3h > 0.5mm:
+cdo -L -O yearsum -gec,5 -mulc,54000 -selmon,5,6,7,8,9 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_1971.nc WF-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_1971.nc
+
+Beregne wet day total? (do for both historical (-> 2005) and rcp45 (2006-2014)    OBS! Different thresholds!
+day > 1mm:
+cdo -L -O timsum -selmon,5,6,7,8,9 -ifthen -gec,1 -mulc,10800 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc WT-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc
+eller
+cdo selmmon,5,6,7,8,9 ifile.nc temp.nc
+cdo mulc,c temp.nc temp2.nc
+cdo gec,c temp2.nc temp3.nc
+cdo timsum -ifthen temp3.nc temp3.nc ofile.nc
+
+3h > 0.5mm:
+cdo -L -O timsum -selmon,5,6,7,8,9 -ifthen -gec,5 -mulc,54000 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc WT-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc
+
+cdo cat WT*

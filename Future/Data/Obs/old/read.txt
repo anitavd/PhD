@@ -1,0 +1,2 @@
+old: "glidende" 3-timers verdier
+nye filer er for satte 3-timers bolker (UTC) for å best sammenligne med EUR-11 modelldata
