@@ -1,4 +1,0 @@
-increaseArea(267549,6935530,1957,2011,"East2")
-increaseArea(65549,6571529,1957,2011,"South")
-computeMaxSD("all",1958,2010, fieldSign=TRUE)
-
