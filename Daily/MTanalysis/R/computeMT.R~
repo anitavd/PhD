@@ -1,0 +1,138 @@
+#################################################################
+#
+# 
+# Script that computes return values (using NERC or GEV) for daily and nday precipitation
+# for the entire senorge grid using annual maximum values from the precipitation grid
+#
+# nday: precipitation sum. 1, 5 or 10 days
+# RP: return period in years
+# uncor: TRUE/FALSE, not corrected for gauge undercatch
+# GEV: TRUE/FALSE, use GEV method or NERC method to compute MT
+#
+# Anita Verpe Dyrrdal, met.no, Jan-2012 (updated: May-2013)
+#
+#################################################################
+
+rm(list=ls())
+
+source("/vol/klimadata/applikasjon/gridding/src/iobin.R")
+source("/vol/klimadata/applikasjon/gridding/src/met_stat.R")
+
+computeMT <-function(start.year,end.year,nday=1, RP=20,uncor=TRUE, GEV=TRUE) {
+
+noYears <- end.year - start.year + 1
+
+ncol <- 1550
+nrow <- 1195
+
+#Default seasons
+winter=c(12,1,2)
+spring=c(3,4,5)
+summer=c(6,7,8)
+fall=c(9,10,11)
+
+#Read file with indexes for non-NA values (version 1.1)
+TabID <- as.numeric(as.matrix(read.table("/home/anitavd/scripts/TabID.txt",header=TRUE)))
+
+yearMax <- array(NA,dim=c(length(TabID),noYears))
+
+year.idx <- 1
+
+if(nday==1) maxfile <- "rrymax"
+if(nday>1) maxfile <- paste("rr",nday,"dymax",sep="")
+
+#Read annual max files for all years
+for (year in start.year:end.year) {
+	
+	filename <- sprintf("/vol/klimadata/archive/anitavd/klimagrid/annualMax_rr/rr%id/%s/binary/%s_%04i.bil",nday,maxfile,maxfile,year)
+	if(uncor) filename <- sprintf("/vol/klimadata/archive/anitavd/klimagrid/annualMax_rr_uncor/rr%id/%s/binary/%s_%04i.bil",nday,maxfile,maxfile,year)
+	con=file(filename,open="rb")
+	maxgrid=readBin(con,integer(),size=2,n=1195*1550)
+    	maxgrid[maxgrid>=10000] <- NA
+	maxgrid[maxgrid==-1] <- NA
+
+  	yearMax[,year.idx] <- maxgrid[TabID]/10   #mm
+	
+	close(con)
+	rm(maxgrid)
+	gc(reset=TRUE)
+
+	year.idx <- year.idx + 1
+
+} #end year-loop
+
+
+if(!GEV) {
+
+model <- "NERC"
+
+# calculating return values using the Gumbel function declared in met_stat.R 
+print("Compute M5 using NERC)")
+# Compute M5
+M5 <- Gumbel(yearMax,T=5)        # Gumbel 5 years return value, mm 
+# Omregning fra døgn- til n*24-timersverdier (glidende akkumuleringsperioder)
+nd24h <- c(1.13,1.04,1.03,1.02,1.02)
+M5 <- M5 * nd24h[1]
+
+M5grid <- array(NA,dim=c(1195,1550))
+M5grid[TabID] <- avrund(M5)   # back to full grid
+filename <- paste("/home/anitavd/PhD/Comparison_methods/MTanalysis/M5_",nday,"d_",start.year,end.year,".bil",sep="")
+if(uncor) filename <- paste("/home/anitavd/PhD/Comparison_methods/MTanalysis/M5_",nday,"d_RRuncor_",start.year,end.year,".bil",sep="")
+writebinfile(M5grid,filename)
+rm(M5grid)
+gc(reset=TRUE)
+
+#Compute MT with the NERC method
+print("Compute MT")
+MT <- as.vector(Nerc(M5, T=RP))                 #mm
+
+}
+
+if(GEV) {
+
+print("Compute MT using GEV")
+
+model <- "GEV"
+MT <- rep(NA,length(TabID))
+#filename <- "~/PhD/Daily/MTanalysis/modeled.shape.daily.bil"
+#con=file(filename,open="rb")
+#mod.shape=readBin(con,integer(),size=2,n=1195*1550)
+#mod.shape[which(mod.shape==-1)] = NA 
+#mod.shape <- mod.shape[TabID]/100
+
+y <- -log(1-(1/RP))
+
+for (i in 1:length(TabID)) {
+
+	GEVfit <- gev.fit(yearMax[i,]*1.13,show=F)
+	loc <- GEVfit$mle[1]
+	scale <- GEVfit$mle[2]
+	shape <- GEVfit$mle[3]
+	MT[i] <- loc - ((scale/shape[i])*(1-(y^(-shape[i]))))
+}
+
+}
+
+MTgrid <- array(NA,dim=c(1195,1550))
+MTgrid[TabID] <- avrund(MT)   # back to full grid
+
+filename <- paste("/home/anitavd/PhD/Daily/MTanalysis/M",RP,"_",nday,"d_",model,"_",start.year,end.year,sep="")
+if(uncor) filename <- paste("/home/anitavd/PhD/Daily/MTanalysis/M",RP,"_",nday,"d_RRuncor_",model,"_",start.year,end.year,sep="")
+writebinfile(MTgrid,paste(filename,".bil",sep=""))
+
+hdrfile <- paste(filename,".hdr",sep="")
+blwfile <- paste(filename,".blw",sep="")
+
+system("cp /home/anitavd/GISfile.hdr /home/anitavd/PhD/Daily/MTanalysis/")
+system("cp /home/anitavd/GISfile.blw /home/anitavd/PhD/Daily/MTanalysis/")
+system(paste("mv /home/anitavd/PhD/Daily/MTanalysis/GISfile.hdr ",hdrfile,sep=""))
+system(paste("mv /home/anitavd/PhD/Daily/MTanalysis/GISfile.blw ",blwfile,sep=""))
+
+rm(MT)
+rm(MTgrid)
+gc(reset=TRUE)
+
+}
+
+
+

@@ -1,0 +1,163 @@
+\begin{thebibliography}{}
+
+\bibitem[{\em Apputhurai \& Stephenson}, 2013]{ApputhuraiandStephenson2013}
+Apputhurai, P, \& Stephenson, A~G., 2013.
+\newblock {Spatiotemporal hierarchical modelling of extreme precipitation in
+  Western Australia using anisotropic Gaussian random fields}.
+\newblock {\em Environ. Ecol. Stat., doi:10.1007/s10651--013--0240--9, in
+  press}.
+
+\bibitem[{\em Buishand}, 1989]{Buishand1989}
+Buishand, T~A., 1989.
+\newblock {Statistics of extremes in climatology}.
+\newblock {\em Statistica Neerlandica}, {\bf 43}, 1--30.
+
+\bibitem[{\em Buishand}, 1991]{Buishand1991}
+Buishand, T~A., 1991.
+\newblock {Extreme rainfall estimation by combining data from several sites}.
+\newblock {\em Hydrological Sciences Journal}, {\bf 36}(4), 345--365.
+
+\bibitem[{\em Coles \& Pericchi}, 2003]{ColesandPericchi2003}
+Coles, S, \& Pericchi, L., 2003.
+\newblock {Anticipating catastrophes through extreme value modelling}.
+\newblock {\em Appl. Statist.}, {\bf 52}, 405--416.
+
+\bibitem[{\em Coles {\em et~al.}}, 2003]{Colesetal2003}
+Coles, S, Pericchi, L~R, \& Sisson, S., 2003.
+\newblock {A fully probabilistic approach to extreme rainfall modelling}.
+\newblock {\em Journal of Hydrology}, {\bf 273}(1-4), 35--50.
+
+\bibitem[{\em Coles}, 2001]{Coles2001}
+Coles, S~G., 2001.
+\newblock {\em {An Introduction to Statistical Modeling of Extreme values}}.
+\newblock Springer Series in Statistics.
+
+\bibitem[{\em Coles \& Tawn}, 1990]{ColesandTawn1990}
+Coles, S~G, \& Tawn, J~A., 1990.
+\newblock {Statistics of coastal flood prevention}.
+\newblock {\em Phil. Trans. R. Soc. Lond.}, {\bf 332}, 457--476.
+
+\bibitem[{\em Coles \& Tawn}, 1996]{ColesandTawn1996}
+Coles, S~G, \& Tawn, J~A., 1996.
+\newblock {Modelling {E}xtremes of the {A}real {R}ainfall {P}rocess}.
+\newblock {\em Journal of the Royal Statistical Society. Series B
+  (Methodological)}, {\bf 58}(2), 329--347.
+
+\bibitem[{\em Cooley {\em et~al.}}, 2007]{Cooleyetal2007}
+Cooley, D, Nychka, D, \& Naveau, P., 2007.
+\newblock {Bayesian Spatial Modeling of Extreme Precipitation Return Levels}.
+\newblock {\em Journal of the American Statistical Association}, {\bf
+  102}(479), 824--840.
+
+\bibitem[{\em Davison {\em et~al.}}, 2012]{Davisonetal2012}
+Davison, A~C, Padoan, S~A, \& Ribatet, M., 2012.
+\newblock {Statistical Modelling of Spatial Extremes}.
+\newblock {\em Statist. Sci}, {\bf 27}(2), 161--186.
+
+\bibitem[{\em Dyrrdal {\em et~al.}}, 2013]{Dyrrdaletal2013}
+Dyrrdal, A~V, Stordal, F, F{\o}rland, E~J, \& Skaugen, T., 2013.
+\newblock {Proposed method for estimating extreme areal precipitation in
+  Norway}.
+\newblock {\em In review}.
+
+\bibitem[{\em F{\o}rland}, 1979]{Forland1979}
+F{\o}rland, E~J., 1979.
+\newblock {Nedb{\o}rens h{\o}ydeavhengighet (Precipitation and topography, in
+  Norwegian with English summary)}.
+\newblock {\em Klima}, {\bf 1}, 3--24.
+
+\bibitem[{\em F{\o}rland}, 1984]{Forland1984b}
+F{\o}rland, E~J., 1984.
+\newblock {Lokalklima p{\aa} Vestlandskysten ({L}ocal climate in western
+  {N}orway, in {N}orwegian with {E}nglish summary)}.
+\newblock {\em Klima}, {\bf 6}, 24--36.
+
+\bibitem[{\em Jansson {\em et~al.}}, 2007]{Janssonetal2007}
+Jansson, A, Tveito, O~E, Pirinen, P, \& Scharling, M., 2007.
+\newblock {NORDGRID - a preliminary investigation on the potential for creation
+  of a joint Nordic gridded climate dataset}.
+\newblock {\em met.no Report 03/2007 Climate}.
+
+\bibitem[{\em Katz {\em et~al.}}, 2002]{Katzetal2002}
+Katz, R~W, Parlange, M~B, \& Naveau, P., 2002.
+\newblock {Statistics of extremes in hydrology}.
+\newblock {\em Advances in Water Resources}, {\bf 25}, 1287--1304.
+
+\bibitem[{\em Koutsoyiannis}, 1999]{Koutsoyiannis1999}
+Koutsoyiannis, D., 1999.
+\newblock {A probabilistic view of Hershfield's method for estimating probable
+  maximum precipitation}.
+\newblock {\em Water Resources Research}, {\bf 35}(4), 1313--1322.
+
+\bibitem[{\em Koutsoyiannis}, 2004a]{Koutsoyiannis2004a}
+Koutsoyiannis, D., 2004a.
+\newblock {Statistics of extremes and estimation of extreme rainfall: I.
+  {T}heoretical investigation}.
+\newblock {\em Hydrological Sciences}, {\bf 49}(4), 575--590.
+
+\bibitem[{\em Koutsoyiannis}, 2004b]{Koutsoyiannis2004b}
+Koutsoyiannis, D., 2004b.
+\newblock {Statistics of extremes and estimation of extreme rainfall: II.
+  {E}mpirical investigation of long rainfall records}.
+\newblock {\em Hydrological Sciences}, {\bf 49}(4).
+
+\bibitem[{\em Koutsoyiannis \& Baloutsos}, 2000]{KoutsoyiannisandBaloutsos2000}
+Koutsoyiannis, D, \& Baloutsos, G., 2000.
+\newblock {Analysis of a long record of annual maximum rainfall in Athens,
+  Greece, and design rainfall inferences}.
+\newblock {\em Natural Hazards}, {\bf 22}(1), 31--51.
+
+\bibitem[{\em Mohr}, 2009]{Mohr2009}
+Mohr, M., 2009.
+\newblock {Comparison of Version 1.1 and 1.0 of gridded temperature and
+  precipitation data for {N}orway}.
+\newblock {\em met.no Note 19/2009}.
+
+\bibitem[{\em Overeem {\em et~al.}}, 2010]{Overeemetal2010}
+Overeem, A, Buishand, T~A, Holleman, I, \& Uijlenhoet, R., 2010.
+\newblock {Extreme value modeling of areal rainfall from weather radar}.
+\newblock {\em Water Resources Research}, {\bf 46}.
+
+\bibitem[{\em Papalexiou \& Koutsoyiannis},
+  2013]{PapalexiouandKoutsoyiannis2013}
+Papalexiou, S~M, \& Koutsoyiannis, D., 2013.
+\newblock {Battle of extreme value distributions: A global survey on extreme
+  daily rainfall}.
+\newblock {\em Water Resour. Res.}, {\bf 49}(1), 187--201.
+
+\bibitem[{\em Tveito {\em et~al.}}, 2002]{Tveitoetal2002}
+Tveito, O~E, Udn{\ae}s, H-C, Mengistu, Z, Engeset, R, \& F{\o}rland, E~J.,
+  2002.
+\newblock {New snow maps for {N}orway}.
+\newblock {\em Proceedings XXII Nordic Hydrological Conference 2002, 4-7 August
+  2002, R{\o}ros, Norway}.
+
+\bibitem[{\em {Van de Vyver}}, 2012]{VandeVyver2012}
+{Van de Vyver}, H., 2012.
+\newblock {Spatial regression models for extreme precipitation in Belgium}.
+\newblock {\em Water Resour. Res.}, {\bf 48}, W09549, doi:10.1029/2011WR011707.
+
+\bibitem[{\em Veneziano {\em et~al.}}, 2009]{Venezianoetal2009}
+Veneziano, D, Langousis, A, \& Lepore, C., 2009.
+\newblock {New asymptotic and preasymptotic results on rainfall maxima from
+  multifractal theory}.
+\newblock {\em Water Resources Research}, {\bf 45}.
+
+\bibitem[{\em Vormoor \& Skaugen}, 2013]{VormoorandSkaugen2013}
+Vormoor, K, \& Skaugen, T., 2013.
+\newblock {Temporal disaggregation of daily temperature and precipitation grid
+  data for Norway}.
+\newblock {\em J. Hydrometeor., doi: 10.1175/JHM-D-12-0139.1, in press}.
+
+\bibitem[{\em Wilks}, 1993]{Wilks1993}
+Wilks, D~S., 1993.
+\newblock {Comparison of three-parameter probability distributions for
+  representing annual extreme and partial duration precipitation series}.
+\newblock {\em Water Resour. Res.}, {\bf 29}(10), 3543--3549.
+
+\bibitem[{\em Wilson \& Toumi}, 2005]{WilsonandToumi2005}
+Wilson, P~S, \& Toumi, R., 2005.
+\newblock {A fundamental probability distribution for heavy rainfall}.
+\newblock {\em Geophysical Research Letters}, {\bf 32}.
+
+\end{thebibliography}

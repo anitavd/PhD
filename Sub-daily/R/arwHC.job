@@ -1,0 +1,481 @@
+#!/bin/sh
+#PBS -o /home/metno/mifahh/WRF/hindcast/arwHC.log
+#PBS -j oe
+#PBS -N arwHC
+#PBS -l select=4:ncpus=32:mpiprocs=16:ompthreads=1:mem=29gb
+#PBS -l walltime=36:00:00
+#PBS -A mip000s
+#PBS -m n     
+
+set +x
+
+module load intelcomp cmkl mpt netcdf
+
+# mpirun command
+mpirun="mpiexec_mpt -n 64 omplace -nt 1"
+
+export OMP_NUM_THREADS=1
+export MPI_REQUEST_MAX=2048
+export MPI_TYPE_MAX=2048
+export MPI_GROUP_MAX=2048
+
+
+# real.exe
+REAL=1
+# wrf.exe
+WRF=1
+
+CLEAN=1       
+
+
+# timestep (hardcoded if adaptive scheme)
+time_step=48
+# 4 nodes (express): 2,1, 8 nodes (large): 2,2
+nio_tasks_per_group=2
+nio_groups=1
+
+#H08    num_metgrid_soil_levels=3
+#ERA40  num_metgrid_soil_levels=4
+#ERAI   num_metgrid_soil_levels=4
+
+num_metgrid_soil_levels=4
+fractional_seaice=1
+#fractional_seaice=0
+
+# era40 soil parameters
+ERACLIM=1
+num_metgrid_soil_levels=3
+if [ $ERACLIM -eq 1 ]; then num_metgrid_soil_levels=4; fi
+
+# usgs/modis
+MODIS=1
+num_land_cat=24
+if [ $MODIS -eq 1 ]; then num_land_cat=20; fi
+
+# lakes
+LAKES=1
+if [ $LAKES -eq 1 ]; then
+num_land_cat=28
+if [ $MODIS -eq 1 ]; then num_land_cat=21; fi
+fi
+
+
+#njord 15.1.2009: pga problemer i kommunikasjonen mellom prosessorene:
+#njord export LIBPATH=/usr/local/lib/njord-20090101
+#njord export MP_EUILIBPATH=/usr/local/lib/njord-20090101
+
+
+home=$HOME/WRF/hindcast
+emr=$HOME/WRFHC/WRFV3/test/em_real
+wemr=/work/mifahh/WRFHC/WRFV3/test/em_real
+ecdir=/work/mifahh/data/ERAI/wps-hc
+savdir=/work/mifahh/save_hc
+
+if [ ! -d $home ]; then echo 'could not find home =' $home; exit 1; fi
+if [ ! -d $emr ]; then echo 'could not find emr =' $emr; exit 1; fi
+if [ ! -d $wemr ]; then echo 'could not find wemr =' $wemr; exit 1; fi
+if [ ! -d $ecdir ]; then echo 'could not find ecdir =' $ecdir; exit 1; fi
+
+
+
+# Periods                                                                                                                                         
+PERIODS="PL1 PL2 PL3 PL4 PL5 PL6 PL7 PL8 PL9 PL10"
+###PERIODS="PL6"
+
+# loop over periods
+for period in $PERIODS; do
+case $period in
+PL1)
+year1=2008; year2=2008; months='01 02'; hh=00
+date0=2008012700 ;  date1=2008012700 ;  date2=2008020200
+;;
+PL2)
+year1=2008; year2=2008; months='02 03'; hh=00
+date0=2008022900 ;  date1=2008022900 ;  date2=2008030600
+;;
+PL3)
+year1=2008; year2=2008; months='03'; hh=00
+date0=2008031200 ;  date1=2008031200 ;  date2=2008031900
+;;
+PL4)
+year1=2008; year2=2008; months='03'; hh=00
+date0=2008031400 ;  date1=2008031400 ;  date2=2008032200
+;;
+PL5)
+year1=2008; year2=2008; months='03 04'; hh=00
+date0=2008033100 ;  date1=2008033100 ;  date2=2008040600
+;;
+PL6)
+year1=2008; year2=2008; months='10'; hh=00
+date0=2008102300 ;  date1=2008102300 ;  date2=2008102900
+;;
+PL7)
+year1=2008; year2=2008; months='11'; hh=00
+date0=2008111400 ;  date1=2008111400 ;  date2=2008112100
+;;
+PL8)
+year1=2008; year2=2008; months='11'; hh=00
+date0=2008111600 ;  date1=2008111600 ;  date2=2008112200
+;;
+PL9)
+year1=2009; year2=2009; months='01'; hh=00
+date0=2009010300 ;  date1=2009010300 ;  date2=2009010900
+;;
+PL10)
+year1=2009; year2=2009; months='02 03'; hh=00
+date0=2009022300 ;  date1=2009022300 ;  date2=2009030200
+;;
+esac
+
+echo '** date0 date1 date2 =' $date0 $date1 $date2
+
+# interval between restart files
+len=24
+len_in_days=1
+# boundary interval is hardcoded to 3 hours in this version
+# erai -have only data with 6h interval
+hrinc=6
+sinc=`expr $hrinc \* 3600`
+
+# change to run-directory
+cd $wemr; pwd
+
+# continue will be set to 0 if failure within a period
+CONTINUE=1
+
+# loop over years
+year=$year1
+while [ $year -le $year2 ]; do
+
+
+
+# loop over months
+for mm in $months; do
+
+days=31
+case $mm in
+02) y1=`expr $year \/ 4`; y2=`expr $year \* 10 \/ 4`; y3=`expr $y1 \* 10`
+    leap=0
+    if [ $y2 -eq $y3 ]; then leap=1; fi
+    if [ $year -eq 1900 -o $year -eq 2100 ]; then leap=0; fi
+    days=28 ; if [ $leap -eq 1 ]; then days=29 ; fi
+    ;;
+04|06|09|11) days=30 ;;
+esac
+echo '** year mm days =' $year $mm $days
+
+
+# loop over days
+day=1
+while [ $day -le $days ]; do
+
+dd=$day; if [ $day -lt 10 ]; then dd='0'$day; fi
+date=$year$mm$dd$hh
+
+echo $date, $date1, $date2, $CONTINUE
+
+# check for date limit
+if [ $date -ge $date1 -a $date -le $date2 -a $CONTINUE -eq 1 ]; then
+
+# compute date+len
+dayp1=`expr $day + $len_in_days`; monthp1=`expr $mm + 0`; yearp1=$year
+if [ $dayp1 -gt $days ]; then dayp1=`expr $dayp1 - $days`; monthp1=`expr $mm + 1`; fi
+if [ $monthp1 -gt 12 ]; then monthp1=1; yearp1=`expr $year + 1`; fi
+ddp1=$dayp1; if [ $dayp1 -lt 10 ]; then ddp1='0'$dayp1; fi
+mmp1=$monthp1; if [ $monthp1 -lt 10 ]; then mmp1='0'$monthp1; fi
+hhp1=$hh
+datep1=$yearp1$mmp1$ddp1$hhp1
+
+
+echo 'Start and end time: '
+echo '** date datep1 =' $date $datep1
+
+
+
+# compute tdfi dates
+yearb=$year; monthb=`expr $mm + 0`; dayb=$day; hourb=`expr $hh - 2`
+yearf=$year; monthf=`expr $mm + 0`; dayf=$day; hourf=`expr $hh + 1`
+if [ $hh -eq 0 ]; then
+   hourb=22
+   dayb=`expr $day - 1`
+   if [ $dayb -eq 0 ]; then
+      monthb=`expr $mm - 1`
+      if [ $monthb -eq 0 ]; then monthb=12; yearb=`expr $year - 1`; fi
+# compute number of days in previous month
+dayb=31
+case $monthb in
+2) y1=`expr $yearb \/ 4`; y2=`expr $yearb \* 10 \/ 4`; y3=`expr $y1 \* 10`
+   leap=0
+   if [ $y2 -eq $y3 ]; then leap=1; fi
+   if [ $yearb -eq 1900 -o $yearb -eq 2100 ]; then leap=0; fi
+   dayb=28 ; if [ $leap -eq 1 ]; then dayb=29 ; fi
+   ;;
+4|6|9|11) dayb=30 ;;
+esac
+   fi
+elif [ $hh -lt 2 -o $hh -gt 22 ]; then
+   echo '** tdfi dates not coded for hh =' $hh; exit 1
+fi
+
+
+echo '** TDFI DATES **'
+echo '** yearb monthb dayb hourb =' $yearb $monthb $dayb $hourb
+echo '** yearf monthf dayf hourf =' $yearf $monthf $dayf $hourf
+
+
+# link input files (hardcoded for 2 following days)
+echo 'Link metfiles'
+rm -f met_em.d01*nc
+inpdir=$ecdir
+if [ -d $inpdir ]; then
+   ln -sf $inpdir/met_em.d01.${year}-${mm}-${dd}_*.nc .
+   ln -sf $inpdir/met_em.d01.${yearp1}-${mmp1}-${ddp1}_00:00:00.nc .
+else
+   echo '** input file directory not found' $inpdir; exit 1
+fi
+echo '** run directory before execution:'; pwd; ls -ltr
+
+# run this day
+
+time0=$(date -u +%Y%m%d%H%M%S)
+
+
+
+# sf_sfclay_physics = 1   num_land_cat=21
+# sf_sfclay_physics = 2   num_land_cat=33
+
+num_land_cat=21
+
+
+echo 'Real '
+if [ $REAL -eq 1 ]; then
+
+# make namelist.input
+restart='true'
+if [ $date -eq $date0 ]; then restart='false'; fi
+reset_simulation_start='true'
+cat <<EOF >sed.input
+s%RUN_HOURS%$len%g
+s%START_YEAR%$year%g
+s%START_MONTH%$mm%g
+s%START_DAY%$dd%g
+s%START_HOUR%$hh%g
+s%END_YEAR%$yearp1%g
+s%END_MONTH%$mmp1%g
+s%END_DAY%$ddp1%g
+s%END_HOUR%$hhp1%g
+s%INTERVAL_SECONDS%$sinc%g
+s%RESTART%$restart%g
+s%RESET_SIMULATION_START%$reset_simulation_start%g
+s%NUM_METGRID_SOIL_LEVELS%$num_metgrid_soil_levels%g
+s%NUM_LAND_CAT%$num_land_cat%g
+s%TIME_STEP%$time_step%g
+s%BCK_YEAR%$yearb%g
+s%BCK_MONTH%$monthb%g
+s%BCK_DAY%$dayb%g
+s%BCK_HOUR%$hourb%g
+s%FWD_YEAR%$yearf%g
+s%FWD_MONTH%$monthf%g
+s%FWD_DAY%$dayf%g
+s%FWD_HOUR%$hourf%g
+s%NIO_TASKS_PER_GROUP%$nio_tasks_per_group%g
+s%NIO_GROUPS%$nio_groups%g
+EOF
+sed -f sed.input <$emr/namelist.input.NORA10-RUN3 >namelist.input
+rm -f sed.input
+if [ ! -d ./save_namelist ]; then mkdir ./save_namelist; fi
+cp -f namelist.input ./save_namelist/namelist.input.real.$date
+
+
+###echo '** start real.exe' `date`
+
+#____________________________________________________________
+
+$mpirun ./real.exe
+#____________________________________________________________
+
+###echo '** end real.exe' `date`
+
+
+logdir=./log_real
+if [ ! -d $logdir ]; then mkdir -p $logdir; fi
+cp -f ./rsl.out.0000 $logdir/rsl.out.0000.$date
+mv -f ./rsl.out.* ./rsl.error.* $logdir/.
+
+fi
+#-----------------------    ENDIF REAL
+
+
+
+
+time1=$(date -u +%Y%m%d%H%M%S)
+
+
+echo 'wrf'
+if [ $WRF -eq 1 ]; then
+
+# make namelist.input
+restart='true'
+if [ $date -eq $date0 ]; then restart='false'; fi
+reset_simulation_start='true'
+cat <<EOF >sed.input
+s%RUN_HOURS%$len%g
+s%START_YEAR%$year%g
+s%START_MONTH%$mm%g
+s%START_DAY%$dd%g
+s%START_HOUR%$hh%g
+s%END_YEAR%$yearp1%g
+s%END_MONTH%$mmp1%g
+s%END_DAY%$ddp1%g
+s%END_HOUR%$hhp1%g
+s%INTERVAL_SECONDS%$sinc%g
+s%RESTART%$restart%g
+s%RESET_SIMULATION_START%$reset_simulation_start%g
+s%NUM_METGRID_SOIL_LEVELS%$num_metgrid_soil_levels%g
+s%NUM_LAND_CAT%$num_land_cat%g
+s%TIME_STEP%$time_step%g
+s%BCK_YEAR%$yearb%g
+s%BCK_MONTH%$monthb%g
+s%BCK_DAY%$dayb%g
+s%BCK_HOUR%$hourb%g
+s%FWD_YEAR%$yearf%g
+s%FWD_MONTH%$monthf%g
+s%FWD_DAY%$dayf%g
+s%FWD_HOUR%$hourf%g
+s%NIO_TASKS_PER_GROUP%$nio_tasks_per_group%g
+s%NIO_GROUPS%$nio_groups%g
+EOF
+sed -f sed.input <$emr/namelist.input.NORA10-RUN3 >namelist.input
+rm -f sed.input
+if [ ! -d ./save_namelist ]; then mkdir ./save_namelist; fi
+cp -f namelist.input ./save_namelist/namelist.input.wrf.$date
+
+
+###echo '** start wrf.exe' `date`
+
+#_________________________________________
+
+$mpirun ./wrf.exe
+#_________________________________________
+
+
+###echo '** end wrf.exe' `date`
+
+
+logdir=./log_wrf
+if [ ! -d $logdir ]; then mkdir -p $logdir; fi
+cp -f ./rsl.out.0000 $logdir/rsl.out.0000.$date
+mv -f ./rsl.out.* ./rsl.error.* $logdir/.
+
+fi
+
+#-----------------------    ENDIF WRF
+
+
+
+time2=$(date -u +%Y%m%d%H%M%S)
+
+h0=`echo $time0 | cut -c9-10`; m0=`echo $time0 | cut -c11-12`; s0=`echo $time0 | cut -c13-14`
+t0=`expr $h0 \* 3600 + $m0 \* 60 + $s0`
+h1=`echo $time1 | cut -c9-10`; m1=`echo $time1 | cut -c11-12`; s1=`echo $time1 | cut -c13-14`
+t1=`expr $h1 \* 3600 + $m1 \* 60 + $s1`
+h2=`echo $time2 | cut -c9-10`; m2=`echo $time2 | cut -c11-12`; s2=`echo $time2 | cut -c13-14`
+t2=`expr $h2 \* 3600 + $m2 \* 60 + $s2`
+((diff1=$t1-$t0))
+((diff2=$t2-$t1))
+oneminute=60
+minutes=$(($diff1 / $oneminute))
+seconds=$(($diff1 - $minutes * $oneminute))
+echo '** date =' $date 'real.exe took' $minutes 'min' $seconds 'sec'
+minutes=$(($diff2 / $oneminute))
+seconds=$(($diff2 - $minutes * $oneminute))
+echo '** date =' $date 'wrf.exe took' $minutes 'min' $seconds 'sec'
+
+
+
+
+#-----------------------    IF WRF
+
+if [ $WRF -eq 1 ]; then
+
+# simple check for correct output file
+out=wrfout_d01_${year}-${mm}-${dd}_${hh}:00:00
+size=0; if [ -f $out ]; then size=`ls -l $out | cut -f5 -d' '`; fi
+
+if [ $size -ge 2358121524 ]; then 
+  echo '** date =' $date 'OUTPUT FILE SEEMS CORRECT' $out
+else    
+  echo '** date =' $date 'WRONG SIZE OUTPUT FILE?' $out
+  echo '** size =' $size
+  CONTINUE=0
+fi
+
+# save output file
+plsavdir=$savdir/$period
+if [ ! -d $plsavdir ]; then mkdir -p $plsavdir; fi
+mv -f wrfout_d01_${year}-${mm}-${dd}_${hh}:00:00 $plsavdir/.
+#if [ -f wrfinput_initialized_d01 ]; then mv -f wrfinput_initialized_d01 $savdir/wrfdfi_d01_${year}-${mm}-${dd}_${hh}:00:00; fi
+
+fi
+
+# clean up
+rm -f met_em.d01*nc
+rm -rf coredir.*
+
+echo '** run directory after execution:'; pwd; ls -ltr
+
+
+
+# end check for date limit
+fi
+
+
+
+
+if [ $CLEAN -eq 1 ]; then
+daybf=`expr $day - 2`
+monthbf=`expr $mm + 0`
+yearbf=`expr $year + 0`
+if [ $daybf -eq 0 ]; then
+   monthbf=`expr $mm - 1`
+   if [ $monthbf -eq 0 ]; then monthbf=12; yearbf=`expr $year - 1`; fi
+# compute number of days in previous month                                                                 
+daybf=31
+case $monthbf in
+2) y1bf=`expr $yearbf \/ 4`; y2bf=`expr $yearbf \* 10 \/ 4`; y3bf=`expr $y1bf \* 10`
+   leap=0
+   if [ $y2bf -eq $y3bf ]; then leap=1; fi
+   if [ $yearbf -eq 1900 -o $yearbf -eq 2100 ]; then leap=0; fi
+   daybf=28 ; if [ $leap -eq 1 ]; then daybf=29 ; fi
+   ;;
+4|6|9|11) daybf=30 ;;
+esac
+fi
+if [ $daybf -lt 10 ]; then daybf='0'$daybf; fi
+if [ $monthbf -lt 10 ]; then monthbf='0'$monthbf; fi
+echo 'CLEAN'
+echo 'Remove the files: '
+echo 'yearbf,monthbf,daybf',   ${yearbf},${monthbf},${daybf}
+echo '/work/mifahh/WRFHC/WRFV3/test/em_real/wrfrst_d01_${yearbf}-${monthbf}-${daybf}_00:00:00_'
+rm -f /work/mifahh/WRFHC/WRFV3/test/em_real/wrfrst_d01_${yearbf}-${monthbf}-${daybf}*
+fi
+
+# end loop over days
+day=`expr $day + 1`
+done
+
+# end loop over months
+done
+
+# end loop over years
+year=`expr $year + 1`
+done
+
+
+
+# end loop over periods
+done
+
+cd $home; pwd
+
+exit

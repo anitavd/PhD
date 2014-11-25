@@ -95,11 +95,13 @@ scen="rcp45"
 RP = "M5"
 
 
-xdim<- ncdim_def("x","degrees",1:143)
-ydim  <- ncdim_def("y","degrees",1:143)
+xdim<- ncdim_def("longitude","degrees",1:143)
+ydim  <- ncdim_def("latitude","degrees",1:143)
 #londim<- ncdim_def("lon","degreesE",lon)
 #latdim  <- ncdim_def("lat","degreesN",lat)
 #prdim <- ncdim_def("pr","mm",change.rcp45.knmi)
+lon<-ncvar_def("longitude","mm",xdim,NULL,longname="Degrees_east",prec="float")
+lat<-ncvar_def("latitude","mm",ydim,NULL,longname="Degrees_north",prec="float")
 prchange<-ncvar_def("prchange","mm",list(xdim,ydim),NULL,longname="Change in M5 for 3-hour precipitation",prec="float")
 prratio<-ncvar_def("prratio","mm",list(xdim,ydim),NULL,longname="Ratio of M5 for 3-hour precipitation",prec="float")
 rlon<-ncvar_def("lon","degrees",list(xdim,ydim),NULL,longname="Rotated degrees east",prec="double")

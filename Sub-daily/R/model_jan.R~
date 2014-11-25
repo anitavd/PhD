@@ -1,0 +1,409 @@
+######################################################################################
+#
+# Bayesian hierarchical model for extreme hourly precipitation
+# Uses observed hourly precipitation from met.no stations, and gridded covariates to
+# distribute GEV parameters in space. 
+# The R-package SpatialExtremes (latent) is used to run a Markov chain. 
+#
+#
+# Anita Verpe Dyrrdal, met.no, Nov.2012
+#
+######################################################################################
+
+rm(list=ls())
+library(SpatialExtremes)
+library(extRemes)
+library(ismev)
+library(spBayes)
+library(geoR)
+library(met.no.REB)
+library(pscl)
+#source("/home/anitavd/PhD/Sub-daily/R/latent.AVD.R")
+#source("/home/anitavd/PhD/Sub-daily/R/map.latent.AVD.R")
+
+loc <- c()
+scale <- c()
+shape.est <- c()
+east <- c()
+north <- c()
+lon <- c()
+lat <- c()
+stnr <- c()
+elev <- c()
+M5 <- c()
+M5.3h <- c()
+loc.3h <- c()
+tam.jja <- c()
+summerRR <- c()
+distSea <- c()
+data.am <- matrix(NA,46,80)
+data.am[,1] <- seq(1967,2012)
+j <- 1
+no.obs <- 0   #length of the longest series
+t<-2
+
+#Read files with observations
+tipping.stations <- list.files("/home/anitavd/PhD/Sub-daily/data/tipping/",pattern = "hourly_AM.txt", full.names=F)
+geonor.stations <- list.files("/home/anitavd/PhD/Sub-daily/data/geonor/",pattern = "hourly_AM.txt", full.names=F)
+all.stations <- c(tipping.stations,geonor.stations)
+no.stations <- length(all.stations)
+
+for (i in 1:no.stations) {
+print(i)
+	file <- all.stations[i]
+	station <- try(read.table(paste("/home/anitavd/PhD/Sub-daily/data/tipping/",file,sep=""),header=F,skip=3),silent=T)
+	if(class(station)=="try-error") station <- try(read.table(paste("/home/anitavd/PhD/Sub-daily/data/geonor/",file,sep=""),header=F,skip=3),silent=T)
+	colnames(station) <- c("STNR","EAST","NORTH","LON","LAT","YEAR","RR_1")
+	station$RR_1[which(station$RR_1 >= 50)] = NA
+	data <- station$RR_1[!is.na(station$RR_1)]
+
+	if(length(data) > 9) {
+
+		first.year <- station$YEAR[1]
+		last.year <- tail(station$YEAR,1)
+		idx1 <- which(data.am[,1]==first.year)
+		idx2 <- which(data.am[,1]==last.year)
+		for (l in idx1:idx2) {
+			try(data.am[l,t] <- station$RR_1[which(station$YEAR==data.am[l,1])],silent=T)
+		}
+		t <- t+1
+
+
+		loc <- rbind(loc,gev.fit(data)$mle[1])
+		scale <- rbind(scale,gev.fit(data)$mle[2]) 
+		shape.est <- rbind(shape.est,gev.fit(data)$mle[3])  
+
+		stnr <- rbind(stnr, station$STNR[1])
+		east <- rbind(east, station$EAST[1])
+		north <- rbind(north, station$NORTH[1])
+		lon <- rbind(lon, station$LON[1])
+		lat <- rbind(lat, station$LAT[1])
+		#data.am[1:length(data),j] <- data
+		no.obs <- max(no.obs,length(which(!is.na(data))))
+
+		#Extract elevation from climate grid
+		x = round((station$EAST - (-75000 + 500)) / 1000, digits = 0) + 1
+		y = round((station$NORTH - (6450000 + 500)) / 1000, digits = 0) + 1
+		point = (1550 - y) * 1195 + (x - 1) + 1
+		filename=sprintf("/klimagrid/senorge/dem1.bil")
+		con=file(filename,open="rb")
+		seek(con, where = ((point - 1) * 2), origin = "start")   # Set position
+		elev.point <- readBin(con, integer(), size=2, n=1)	# [m] 
+		close(con)
+
+		#If grid cell is outside the grid, find a grid cell nearby that is within the grid
+		if(elev.point==0) {
+			offset <- c(1, -1, 1195, -1195, 1196, -1196, 1194, -1194)
+			for (k in 1:8) {
+				con=file(filename,open="rb")
+				seek(con, where = ((point + offset[k] - 1) * 2), origin = "start")   # Set position
+				elev.point <- readBin(con, integer(), size=2, n=1)	# [m] 
+				close(con)
+				if(elev.point>0) {
+					point <- point + offset[k]				
+					break()
+				}
+			}
+		}
+		elev <- rbind(elev,elev.point)			
+
+		#Extract M5(24h) computed from the climate grid
+		filename=sprintf("/klimadata/archive/anitavd/M200/ny/M5_RRuncor.bil")
+		con=file(filename,open="rb")
+		seek(con, where = ((point - 1) * 2), origin = "start")   # Set position
+		M5 <- rbind(M5,readBin(con, integer(), size=2, n=1))	# [mm] 
+		close(con)
+
+		#M5 for 3-hour precipitation
+		filename<-"/home/anitavd/PhD/Sub-daily/Covariates/M5_rr3.bil"
+		con=file(filename,open="rb")
+		seek(con, where = ((point - 1) * 2), origin = "start")   # Set position
+		M5.3h <- rbind(M5.3h,readBin(con,integer(),size=2,n=1))
+		close(con)
+
+		#M5 for 3-hour precipitation
+		filename<-"/home/anitavd/PhD/Sub-daily/Covariates/loc.RR3.bil"
+		con=file(filename,open="rb")
+		seek(con, where = ((point - 1) * 2), origin = "start")   # Set position
+		loc.3h <- rbind(loc.3h,readBin(con,integer(),size=2,n=1))
+		close(con)
+
+		#Summer temperature
+		filename<-"/home/anitavd/PhD/Sub-daily/Covariates/tam_jja.bil"
+		con=file(filename,open="rb")
+		seek(con, where = ((point - 1) * 2), origin = "start")   # Set position
+		tam.jja <- rbind(tam.jja,(readBin(con,integer(),size=2,n=1)-2730)/10)
+		close(con)
+
+		#Area dominated by summer precipitation (1)
+		filename<-"/home/anitavd/PhD/Sub-daily/Covariates/area_summerPrecip.bil"
+		con=file(filename,open="rb")
+		seek(con, where = ((point - 1) * 2), origin = "start")   # Set position
+		summerRR <- rbind(summerRR,readBin(con,integer(),size=2,n=1))
+		close(con)
+
+		#Distance from coast
+		filename<-"/home/anitavd/PhD/Sub-daily/Covariates/distsea_km.bil"
+		con=file(filename,open="rb")
+		seek(con, where = ((point - 1) * 2), origin = "start")   # Set position
+		distSea <- rbind(distSea,readBin(con,integer(),size=2,n=1))
+		close(con)
+
+		j <- j+1
+		
+	}
+
+}
+
+no.sites <- length(loc)
+
+data.am <- data.am[,1:(no.sites+1)]
+
+#Extend series to no.obs by generating a GEV series with the same parameters as original series.
+for (i in 2:(no.sites+1)) {
+
+	no.na <- length(which(is.na(data.am[,i])))
+
+	add <- round(gen.gev(gevmle(data.am[,i][which(!is.na(data.am[,i]))]),no.na),digits=1)
+	data.am[,i][which(is.na(data.am[,i]))] <- add
+
+}
+
+shape <- rep(0.15,no.sites)
+
+coord <- cbind(east,north)
+colnames(coord) <- c("east","north")
+coord1 <- cbind(lon,lat)
+colnames(coord1) <- c("lon","lat")
+elev[which(elev == -1)] = NA
+M5[which(M5 == -1)] = NA
+M5.3h[which(M5.3h == -1)] = NA
+loc.3h[which(loc.3h == -1)] = NA
+loc.3h <- loc.3h/100
+
+##############################################################################################
+
+coord.clim <- cbind(M5[,1],elev[,1])
+colnames(coord.clim) <- c("M5","Elev")
+
+#Include M5 and elev from KDVH for stations 39150 and 64300
+k <- which(stnr==39150)
+coord.clim[k,] <- c(105,12)
+k <- which(stnr==64300)
+coord.clim[k,] <- c(58,39)
+
+coord.clim <- cbind(coord.clim[,1],coord.clim[,1])
+
+#################################################################################################
+# 1st layer (Data level): Fit GEV model to data and determine sill and range
+#################################################################################################
+
+#Explore the data, variogram, to find sill and range
+max.dist <- max(iDist(coord2))
+bins <- 1000
+
+vario <- variog(coords=coord2, data=loc, uvec= seq(0, max.dist, l = 1000),max.dist=max.dist)
+
+init.values <- expand.grid(seq(1,20,by=0.5),seq(0,max.dist,by=0.5))
+fit.vario <-variofit(vario, ini.cov.pars=init.values, ##sigma^2 and 1/phi 
+                   cov.model="exponential", minimisation.function="optim", weights="equal")
+
+loc.range <- fit.vario$cov.pars[2]
+loc.eff.range <- -log(0.05)*loc.range
+loc.par.sill <- fit.vario$cov.pars[1]
+loc.nugget <- fit.vario$nugget
+loc.sill <- loc.par.sill + loc.nugget
+loc.kappa <- 0.5   #smoothness parameter, fixed
+
+#Scale
+
+vario <- variog(coords=coord, data=scale, uvec= seq(0, max.dist, l = 5000),max.dist=max.dist)
+
+init.values <- expand.grid(seq(0.5,4,by=0.1),seq(0,max.dist,by=1000))
+fit.vario <-variofit(vario, ini.cov.pars=init.values, ##sigma^2 and 1/phi 
+                   cov.model="exponential", minimisation.function="optim", weights="equal")  #Use exponential or stable (powered-exponential) or spherical?
+
+sc.range <- fit.vario$cov.pars[2]
+sc.eff.range <- -log(0.05)*sc.range
+sc.par.sill <- fit.vario$cov.pars[1]
+sc.nugget <- fit.vario$nugget
+sc.sill <- sc.par.sill + sc.nugget
+sc.kappa <- 0.5   #smoothness parameter, fixed
+
+#USE MANOGRAM INSTEAD? (fmanogram(data,coord))
+
+#png("/home/anitavd/PhD/Sub-daily/Figs/variogram_loc.png")
+plot(vario)
+lines(fit.vario)
+abline(h=loc.nugget, col="blue")##nugget
+abline(h=loc.sill, col="green")##sill
+abline(v=loc.eff.range, col="red3")##effective range 
+#dev.off()
+
+###########################################################################################################
+
+#Bayesian spatial model
+#Assume that the processes for each GEV parameters are mutually independent Gaussian processes.
+
+#2nd layer
+
+#Spatial linear model for the mean of the latent process, link to covariates
+cov1 <- (north-mean(north,na.rm=T))/apply(north,2,sd)
+cov2 <- (tam.jja-mean(tam.jja,na.rm=T))/apply(tam.jja,2,sd)
+cov3 <- (elev-mean(elev,na.rm=T))/apply(elev,2,sd)
+cov4 <- (distSea-mean(distSea,na.rm=T))/apply(distSea,2,sd)
+cov5 <- ((tam.jja*summerRR)-mean((tam.jja*summerRR),na.rm=T))/apply((tam.jja*summerRR),2,sd)
+loc.form <- y ~ north + tam.jja
+scale.form <- y ~ north + tam.jja
+shape.form <- y ~ 1    #constant
+
+#Estimate priors for hyperparameters according to variogram
+#hsill11 <- 2+(loc.sill/300)
+#hsill12 <- loc.sill*((loc.sill/300) +1)
+#hsill21 <- 2+(sc.sill/100)
+#hsill22 <- sc.sill*((sc.sill/100) +1)
+#hrange11 <- (loc.range^2)/(100000^2)
+#hrange12 <- (100000^2)/loc.range
+#hrange21 <- (sc.range^2)/(100000^2)
+#hrange22 <- (100000^2)/sc.range
+
+#Første forsøk
+s11 <- 2
+s12 <- 20
+s21 <- 2
+s22 <- 4
+r11 <- 2
+r12 <- 8000
+r21 <- 2
+r22 <- 8000
+
+#Andre forsøk
+#s11<-2
+#s12<-2
+#s21<-2
+#s22<-2
+#r11<-2
+#r12<-180000
+#r21<-r11
+#r22<-r12
+
+############################################################################################################################
+#3rd layer
+############################################################################################################################
+
+#Prior on hyperparameters, saying smt about the spatial dependence of model parameters (GEV parameters + regression parameters). How to decide these?? Analyse fitted marginal distribution (fitmaxstab)? Why do beta... have 3 variables? mean, covariance matrix and degree of belief???
+hyper <- list()
+hyper$sills <- list(loc = c(s11,s12), scale = c(s21,s22), shape = c(2,0))  #independent inverse gamma prior for sill (beta0)
+hyper$ranges <- list(loc = c(r11,r12), scale = c(r21,r22), shape = c(0,0))	#gamma prior for range, c(shape,scale), uninformative (beta1) (shape=0)
+hyper$smooths <- list(loc = c(1,1/3), scale = c(1,1/3), shape = c(0,0))	#gamma prior for shape, uninformative
+hyper$betaMeans <- list(loc = c(5,0,0), scale = c(2,0,0), shape = 0.15)		#multivariate normal distribution, uninformative, #of covariates + intercept (df)
+#hyper$betaIcov <- list(loc = solve(matrix(c(1,-1,1,-1,1,-0.5,1,-0.5,1),3,3)),scale = solve(matrix(c(1,-1,1,-1,1,-0.5,1,-0.5,1),3,3)),shape = 0)   #solve = inverse, of the covariance matrix
+hyper$betaIcov <- list(loc = solve(diag(c(1,1,1))),scale=solve(diag(c(1,1,1))),shape=solve(diag(c(10), 1, 1)))
+
+#SD of proposed distribution of GEV parameters.Normal for loc and shape, log-normal for scale
+#Jump sized for range, jump sized for shape.
+#We will use an exponential covariance function so the jump sizes for the shape parameter of the covariance function are null.
+prop <- list(gev = c(1.2, 0.08, 0), ranges = c(0.7, 0.8, 0), smooths = c(0,0,0))
+
+#Starting values, beta = link to covariates
+start <- list(sills = c(5,2,0.1), ranges = c(50000,50000,1000000), smooths= c(1, 1, 1), beta = list(loc = c(5,0.1,0.1), scale = c(2,0.1,0.1),shape = c(0.15))) #ranges and sills cannot be zero
+
+#Run model, Markov chain. data should be a matrix with no NA's. marg.cov???
+mc <- latent(data=data.am[,2:70], coord, loc.form = loc.form, scale.form = scale.form,shape.form = shape.form, hyper = hyper, prop = prop, start = start,n = 10000, burn.in= 5000, thin = 30)   #RETURN THIS LIST! n=300000, burn.in=5000, thin=30 (Davison...)
+
+
+sink(paste("/home/anitavd/PhD/Sub-daily/mc_",s11,s12,"_",s21,s22,"_",r11,r12,"_",r21,r22,".txt",sep=""))
+mc
+sink()
+
+#Specify coordinates according to stations. Må ha lik lengde...?
+x.grid <- seq(-53000, 1071000, length = 50)
+y.grid <- seq(6466000,7806000, length = 60)
+#Map results, mean and confidence intervals. COVARIATES??? rep.per is only needed if param="quant". All scale must become > 0 --> use log(scale). HOW?s
+#map.latent(mc, param = "loc",ret.per=200, plot.contour=F)
+
+
+##############################################################################
+#
+# Plot prior and posterior distributions
+#
+##############################################################################
+
+#Range
+#Location
+pri.shape <- 5
+pri.scale <- 3
+
+mean.range <- 5.0777
+sd.range <- (18.6205 - mean.range)/1.96
+pos.shape <- (mean.range/sd.range)^2
+pos.scale <- (sd.range^2)/mean.range
+
+x <- seq(0, 100, length=100)
+pri <- dgamma(x, shape=pri.shape, scale=pri.scale)
+
+#png("/home/anitavd/PhD/Sub-daily/Figs/Range_loc_2_180000.png")
+plot(x, pri, type="n", lty=2, lwd=2, xlab="x", ylab=expression(f(x)), ylim=c(0,0.00001), frame.plot=F)
+
+lines(x, dgamma(x,shape=pri.shape, scale=pri.scale), lwd=2, col="red")#Range
+lines(x, dgamma(x,shape=pos.shape, scale=pos.scale), lwd=2, col="blue")
+
+#Location
+pri.shape <- r11
+pri.scale <- r12
+
+mean.range <- 175000
+sd.range <- (624800 - mean.range)/1.96
+pos.shape <- (mean.range/sd.range)^2
+pos.scale <- (sd.range^2)/mean.range
+
+x <- seq(0, 1000000, length=1000)
+pri <- dgamma(x, shape=pri.shape, scale=pri.scale)
+
+#png("/home/anitavd/PhD/Sub-daily/Figs/Range_loc_2_180000.png")
+plot(x, pri, type="n", lty=2, lwd=2, xlab="x", ylab=expression(f(x)), ylim=c(0,0.000005), frame.plot=F)
+
+lines(x, dgamma(x,shape=pri.shape, scale=pri.scale), lwd=2, col="red")
+lines(x, dgamma(x,shape=pos.shape, scale=pos.scale), lwd=2, col="blue")
+#dev.off()
+lines(x, dgamma(x,shape=pos.shape, scale=pos.scale), lwd=2, col="blue")
+#dev.off()
+
+#Sill
+#Location
+pri.shape <- 1
+pri.scale <- 1
+
+mean.sill <- 4.818
+sd.sill <- (9.517 - mean.sill)/1.96
+pos.shape <- (mean.sill/(sd.sill^2))+2
+pos.scale <- mean.sill*((mean.sill/(sd.sill^2))+1)
+
+x <- seq(1, 80, length=40)
+pri <- densigamma(x, pri.shape, pri.scale)
+
+png("/home/anitavd/PhD/Sub-daily/Figs/Sill_loc_2_180000.png")
+plot(x, pri, type="n", lty=2, lwd=2, xlab="x", ylab=expression(f(x)), ylim=c(0,0.5), frame.plot=F)
+
+lines(x, densigamma(x,pri.shape, pri.scale), lwd=2, col="red")
+lines(x, densigamma(x,pos.shape, pos.scale), lwd=2, col="blue")
+dev.off()
+
+#Scale
+pri.shape <- r21 
+pri.scale <- r22
+mean.range <- 24490
+sd.range <- (55980 - mean.range)/1.96
+pos.shape <- (mean.range/sd.range)^2
+pos.scale <- (sd.range^2)/mean.range
+
+x <- seq(5000, 1000000, length=1000)
+pri <- dgamma(x, shape=pri.shape, scale=pri.scale)
+
+#png("/home/anitavd/PhD/Sub-daily/Figs/Range_scale_2_8000.png")
+plot(x, pri, type="n", lty=2, lwd=2, xlab="x", ylab=expression(f(x)), ylim=c(0,0.000005), frame.plot=F)
+
+lines(x, dgamma(x,shape=pri.shape, scale=pri.scale), lwd=2, col="red")
+lines(x, dgamma(x,shape=pos.shape, scale=pos.scale), lwd=2, col="blue")
+#dev.off()
+

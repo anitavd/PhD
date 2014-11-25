@@ -1,0 +1,47 @@
+Effective length: 1000 
+         Burn-in: 300 
+        Thinning: 15 
+   Effective NoP: 56.62727 
+             DIC: 7883.78 
+
+  Regression Parameters:
+      Location Parameters:
+           lm1      lm2      lm3      lm4      lm5    
+ci.lower    4.9765  -0.9174   0.4827   0.1970   0.8704
+post.mean   8.5018   0.1973   1.2891   0.6677   1.3474
+ci.upper   11.3838   1.3547   2.1326   1.1697   1.7602
+
+         Scale Parameters:
+           lm1       lm2       lm3     
+ci.lower    1.77943  -0.22993  -0.06093
+post.mean   3.13115   0.13488   0.25160
+ci.upper    4.47527   0.49012   0.52669
+
+         Shape Parameters:
+           lm1 
+ci.lower   0.15
+post.mean  0.15
+ci.upper   0.15
+
+
+  Latent Parameters:
+      Location Parameters:
+        Covariance family: powexp 
+           sill     range    smooth 
+ci.lower    1.1345   0.8565   1.0000
+post.mean   4.0300   4.1422   1.0000
+ci.upper   11.8684  10.0902   1.0000
+
+      Scale Parameters:
+     Covariance family: powexp 
+           sill    range   smooth
+ci.lower   0.3809  0.3237  1.0000
+post.mean  1.1032  2.1878  1.0000
+ci.upper   2.9109  6.5474  1.0000
+
+      Shape Parameters:
+     Covariance family: powexp 
+           sill     range    smooth 
+ci.lower   0.09251  1.73936  1.00000
+post.mean  0.19463  4.72658  1.00000
+ci.upper   0.40038  9.17922  1.00000

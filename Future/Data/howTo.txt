@@ -1,16 +1,15 @@
 Create annual maxima file for selected sites:
 
-###############for file in *historic*; do echo Now processing $file; cdo remapnn,locations.txt $file loc-$file;  done
+for file in *historic*; do echo Now processing $file; cdo remapnn,locations.txt $file loc-$file;  done
 #Do the same for the remaining years, 2006-2013, rcp85.
 
 cdo cat loc-pr* loc-EUR11pr3h_MPI_SMHI_rcp85_19702013.nc
 
 cdo -yearmax loc-EUR11pr3h_MPI_SMHI_rcp85_19702013.nc AM/AM-loc-EUR11pr3h_MPI_SMHI_rcp85_1970-2013.nc
-###############3
 
-the entire grid, only summer months:
-cdo yearmax -selmon,5,6,7,8,9 ifile AM-year
-cdo cat AM-year* AM-1971-2014
+#the entire grid, only summer months:
+cdo yearmax -selmon,6,7,8 ifile SM-year
+cdo cat SM-year* SM-1971-2014
 
 
 Create AM file for entire Norway

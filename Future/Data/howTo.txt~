@@ -1,15 +1,14 @@
 Create annual maxima file for selected sites:
 
-###############for file in *historic*; do echo Now processing $file; cdo remapnn,locations.txt $file loc-$file;  done
+for file in *historic*; do echo Now processing $file; cdo remapnn,locations.txt $file loc-$file;  done
 #Do the same for the remaining years, 2006-2013, rcp85.
 
 cdo cat loc-pr* loc-EUR11pr3h_MPI_SMHI_rcp85_19702013.nc
 
 cdo -yearmax loc-EUR11pr3h_MPI_SMHI_rcp85_19702013.nc AM/AM-loc-EUR11pr3h_MPI_SMHI_rcp85_1970-2013.nc
-###############3
 
 the entire grid, only summer months:
-cdo yearmax -selmon,5,6,7,8,9 ifile AM-year
+cdo yearmax -selmon,6,7,8 ifile AM-year
 cdo cat AM-year* AM-1971-2014
 
 
@@ -42,13 +41,13 @@ gange med 60*60 / 60*60*3 for å få mm
 
 Beregne wet day frequency
 day > 1mm:
-cdo -L -o yearsum -gec,1 -mulc,10800 -selmon,5,6,7,8,9 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc WF-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc 
+cdo -L -O yearsum -gec,1 -mulc,10800 -selmon,5,6,7,8,9 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc WF-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc 
 3h > 0.5mm:
-cdo -L -o yearsum -gec,5 -mulc,54000 -selmon,5,6,7,8,9 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_1971.nc WF-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_1971.nc
+cdo -L -O yearsum -gec,5 -mulc,54000 -selmon,5,6,7,8,9 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_1971.nc WF-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_1971.nc
 
 Beregne wet day total? (do for both historical (-> 2005) and rcp45 (2006-2014)    OBS! Different thresholds!
 day > 1mm:
-cdo -L -o timsum -selmon,5,6,7,8,9 -ifthen -gec,1 -mulc,10800 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc WT-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc
+cdo -L -O timsum -selmon,5,6,7,8,9 -ifthen -gec,1 -mulc,10800 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc WT-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_historical_r1i1p1_IPSL-INERIS-WRF331F_v1_day_1971.nc
 eller
 cdo selmmon,5,6,7,8,9 ifile.nc temp.nc
 cdo mulc,c temp.nc temp2.nc
@@ -56,6 +55,6 @@ cdo gec,c temp2.nc temp3.nc
 cdo timsum -ifthen temp3.nc temp3.nc ofile.nc
 
 3h > 0.5mm:
-cdo -L -o timsum -selmon,5,6,7,8,9 -ifthen -gec,5 -mulc,54000 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc WT-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc
+cdo -L -O timsum -selmon,5,6,7,8,9 -ifthen -gec,5 -mulc,54000 Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc WT-Norway-pr_EUR-11_IPSL-IPSL-CM5A-MR_rcp45_r1i1p1_IPSL-INERIS-WRF331F_v1_3h_$n.nc
 
 cdo cat WT*

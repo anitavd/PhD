@@ -1,0 +1,28 @@
+source("/vol/klimadata/applikasjon/gridding/src/iobin.R")
+source("/vol/klimadata/applikasjon/gridding/src/met_stat.R")
+
+TabID <- as.numeric(as.matrix(read.table("/home/anitavd/scripts/TabID.txt",header=TRUE)))
+
+filename <- "~/PhD/Daily/MTanalysis/M5_1d_RRuncor_19572010.bil"
+con=file(filename,open="rb")
+M5=readBin(con,integer(),size=2,n=1195*1550)
+M5[M5=-1] = NA
+M5 <- M5[TabID]
+
+shape <- rep(NA,length(TabID))
+
+shape[M5<40] = 0.15
+shape[M5>=40 & M5<60] = 0.14 
+shape[M5>=60 & M5<80] = 0.13 
+shape[M5>=80 & M5<100] = 0.12 
+shape[M5>=100 & M5<120] = 0.11
+shape[M5>=120] = 0.10  
+
+mod.shape <- array(NA,dim=c(1195,1550))
+mod.shape[TabID] <- shape*100
+
+filename <- "~/PhD/Daily/MTanalysis/modeled.shape.daily.bil"
+writebinfile(mod.shape,filename)   #two decimals
+
+
+   

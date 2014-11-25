@@ -1,0 +1,4 @@
+For observations we might have too low WT, WI, because 
+in some periodes the station is not operative. This
+affects the wet event variables since these depend on several values,
+while AM is not as sensitive since it only depends on one value.

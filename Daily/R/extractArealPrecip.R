@@ -1,0 +1,140 @@
+###############################################################################
+#
+# Extract daily values of average precipitation(RR) for a defined area, 
+# from the climate grids (senorge)
+# 
+# PS: Use extractTabID.py and the other files in "P://PhD/Research/Comparison_methods/Tools" in ArcGIS
+# to generate the files (areaID, arealPN) needed to run this script. 
+#
+# pathtofiles (mandatory): Path to files "tabID.txt" and "arealPN" created by extractTabID.py. Results are also written to this directory.
+# field.name (optional): Name of the study field, f.ex. a catchment
+# start.month (optional) / end.month (optional): m/mm (1-12)
+# start.year (optional) / end.year (optional): yyyy
+# end.month (optional): m/mm (1-12) (default: 1 month ago, to get the entire month)
+# end.year (optional): yyyy (default: a month ago)
+# RR_uncor (optional): logical TRUE/FALSE - use precipitation without correction for gauge undercatch (default: TRUE)  
+#
+# If end date is not specified, last month is chosen
+#
+# Anita Verpe Dyrrdal, met.no, November 2011
+# 
+#
+##############################################################################
+
+rm(list=ls())
+
+source("/vol/klimadata/applikasjon/gridding/src/iobin.R")
+
+extractArealPrecip <- function(pathtofiles, field.name="Field", start.month=1, start.year=1957, end.month=as.numeric(system("date  +%m --date='1 month ago'",intern=TRUE)), end.year=as.numeric(system("date  +%Y --date='1 month ago'",intern=TRUE)), RR_uncor=TRUE) { 
+
+#Check that mandatory input is given
+if(missing(pathtofiles)) stop("pathtofiles must be specified")
+
+#Check that function input makes sense
+if(!is.character(pathtofiles)) stop("pathtofiles must be of type 'character'")
+if(start.month < 1 | start.month > 12) stop("Start month must be an integer from 1 to 12")
+if(start.year < 1957) stop("First year of climate grid is 1957 (first month of first year is 9)")
+if(end.month < 1 | end.month > 12) stop("End month must be an integer from 1 to 12")
+if(end.year > substr(Sys.Date(),1,4)) stop("Given last year has not occured yet")
+if(!is.logical(RR_uncor)) stop("RR_uncor must be of type 'logical'")
+
+#ID of grid cells in the area
+areaID <- read.table(paste(pathtofiles,field.name,"/tabID.txt",sep=""), header=FALSE, dec=",")
+colnames(areaID) <- c("X","Y","ID")
+ID <- areaID$ID + 1   #ArcMap starts at 0, while R starts at 1
+#Normal annual areal precipitation
+arealPN <- read.table(paste(pathtofiles,field.name,"/arealPN.txt",sep=""), header=FALSE, dec=".")
+#Area of field
+area <- read.table(paste(pathtofiles,field.name,"/area.txt",sep=""), header=FALSE, dec=".")
+
+#Number of grid cells
+no.points <- length(ID)
+
+#Vector with number of days in the months
+nodays.vector <- c(31,28,31,30,31,30,31,31,30,31,30,31)
+
+#Extract average, median, min and max height above sea level of the area in question
+filename=sprintf("/vol/klimagrid/senorge/dem1.bil")
+con=file(filename,open="rb")
+dem1 <- readBin(con, integer(), size=2, n=1550*1195)	# [m] 
+close(con)
+elev <- dem1[ID]
+rm(dem1)
+gc(reset=TRUE)
+elev[elev == - 1] = NA
+mean.elev <- round(mean(elev, na.rm=TRUE),0)
+median.elev <- median(elev, na.rm=TRUE)
+min.elev <- min(elev, na.rm=TRUE)
+max.elev <- max(elev, na.rm =TRUE)
+rm(elev)
+gc(reset=TRUE)
+
+#Open file to write result to
+outfile <- paste(pathtofiles, field.name,"/", field.name, "_areal_precipitation_grid.txt",sep="")
+unlink(outfile)
+zz <- file(outfile, "a")
+
+#Write header to file
+cat(paste("Mean areal precipitation (MAP) from met.no and NVE climate grids for the period ",start.month,".",start.year, " - ",end.month,".",end.year,"\n\nField name: ",field.name,"\nNormal (1961-1990) annual precipitation (PN): ", round(arealPN,digits=0)," mm\nArea size: ",round(area/1000000,digits=0)," km²\n\nArea elevation [masl]\n","Mean\tMedian\tMinimum\tMaximum\n",mean.elev,"\t",median.elev,"\t", min.elev,"\t", max.elev,sep=""), file=zz)
+cat(paste("\n\n\nYear", "Month", "Day", "MAP", sep="\t"), "\n", file=zz)
+close(zz)
+
+#Loop through all years
+for (year in start.year : end.year) {
+
+	if ( year != start.year) {
+		startmonth <- 1
+	}else {
+		startmonth <- start.month
+	}
+	if ( year != end.year) {
+		endmonth <- 12
+	}else {
+		endmonth <- end.month
+	}
+	
+	#Loop through all months in a year
+	for (month in startmonth:endmonth) {
+
+		nodays <- nodays.vector[month]
+
+		if (month == 2) {
+		if(is.integer(((year/4)-1):(year/4))) nodays <-29
+		}
+
+		#Loop through all days in a month
+		for (day in 1:nodays) {
+
+			#Read precipitation grid and extract mean areal precipitation (MAP)
+			filename=sprintf("/vol/klimagrid/daily/rr/binary/%4i/%2.2i/rr_%4i_%2.2i_%2.2i.bil",year,month,year,month,day)
+			if(RR_uncor) filename=sprintf("/vol/klimagrid/daily/rr_uncorrected/binary/%4i/%2.2i/rr_%4i_%2.2i_%2.2i.bil",year,month,year,month,day)
+			print(filename)
+			con=file(filename,open="rb")
+			rr.grid<- readBin(con, integer(), size=2, n=1550*1195)
+			close(con)
+			rr <- rr.grid[ID]
+			rm(rr.grid)
+			gc(reset=TRUE)
+			rr[rr == 10000] = NA
+			rr <- rr/10    # [mm]
+			MAP <- round(mean(rr, na.rm=TRUE),1)
+			rm(rr)
+			gc(reset=TRUE) 
+
+			#Write values to file
+			zz <- file(outfile, "a")
+			cat(paste(year,month,day,MAP,sep="\t"),"\n",file=zz,append=TRUE)
+			close(zz)
+
+		} # end day loop
+			
+	} # end month loop
+
+} # end year loop
+
+print(paste("Results written to file ",outfile,sep=""))		
+
+} # end function
+
+
+

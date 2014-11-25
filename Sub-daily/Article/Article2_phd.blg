@@ -1,0 +1,47 @@
+This is BibTeX, Version 0.99c (TeX Live 2009/Debian)
+The top-level auxiliary file: Article2_phd.aux
+The style file: ams.bst
+Database file #1: /home/anitavd/Latex/anita.bib
+Warning--can't use both author and editor fields in Coles2001
+You've used 28 entries,
+            2437 wiz_defined-function locations,
+            859 strings with 11133 characters,
+and the built_in function-call counts, 11038 in all, are:
+= -- 1094
+> -- 368
+< -- 92
++ -- 105
+- -- 104
+* -- 913
+:= -- 1819
+add.period$ -- 112
+call.type$ -- 28
+change.case$ -- 176
+chr.to.int$ -- 27
+cite$ -- 29
+duplicate$ -- 422
+empty$ -- 826
+format.name$ -- 139
+if$ -- 2217
+int.to.chr$ -- 2
+int.to.str$ -- 0
+missing$ -- 29
+newline$ -- 143
+num.names$ -- 84
+pop$ -- 152
+preamble$ -- 1
+purify$ -- 204
+quote$ -- 0
+skip$ -- 417
+stack$ -- 0
+substring$ -- 786
+swap$ -- 78
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 222
+warning$ -- 1
+while$ -- 89
+width$ -- 0
+write$ -- 359
+(There was 1 warning)
